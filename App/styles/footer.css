@@ -1,0 +1,19 @@
+footer {
+    padding-bottom: 5%;
+}
+
+.author{
+    padding-top: 1px;
+    text-align: center;
+    font-size: 10px;
+    color: white;
+    margin: auto;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 2px black, 0 0 1em black, 0 0 0.2em black;
+    opacity: 0.4;
+}
+
+.repo-link{
+    color: white;
+    text-decoration: underline;
+}

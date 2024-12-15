@@ -1,48 +1,75 @@
 package main
 
-import ("fmt"; "net/http"; "html/template")
+import (
+	"fmt"
+	"net/http"
+	"html/template"
 
-type User struct {
-	Name string
-	Age uint16
-	Money int16
-	Avg_grades, Happiness float64
-	Hobbies []string
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+
+)
+
+func index(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("pages/Home/index.html", "pages/templates/header.html", "pages/templates/footer.html")
+
+	if err != nil {
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+
+	t.ExecuteTemplate(w, "index", nil)
 }
 
-func (u User) getAllInfo() string {
-	return fmt.Sprintf("User name is: %s. He is %d years old " + 
-	"and he has money equal: %d", u.Name, u.Age, u.Money)
+func create(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("pages/Create/create.html", "pages/templates/header.html", "pages/templates/footer.html")
+
+	if err != nil {
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+
+	t.ExecuteTemplate(w, "create", nil)
 }
 
-func (u *User) setNewName(newName string) {
-	u.Name = newName
+func save_article(w http.ResponseWriter, r *http.Request) {
+	title := r.FormValue("title")
+	anons := r.FormValue("anons")
+	full_text := r.FormValue("full_text")
+
+	if title == "" || anons == "" || full_text == "" {
+		fmt.Fprintf(w, `<script>alert("Все поля должны быть заполнены!"); window.history.back();</script>`)
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+	fmt.Println("Successfully connected to database")
+
+	// Использование подготовленного запроса
+	_, err = db.Exec("INSERT INTO `articles` (`title`, `anons`, `full_text`) VALUES (?, ?, ?)", title, anons, full_text)
+	if err != nil {
+		http.Error(w, "Failed to insert data", http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("Data inserted")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func home_page(w http.ResponseWriter, r *http.Request) {
-	bob := User{"Bob", 25, -50, 4.2, 0.8, []string{"Volleyball", "Basketball", "Singing", "Programming"}}
-	// bob.setNewName("Daniel")
-	// fmt.Fprintf(w, bob.getAllInfo())
-	// fmt.Fprintf(w, `<h1>Main Text</h1>
-	// <b>Main Text</b>`)
-
-	tmpl, _ := template.ParseFiles("templates/home_page.html")
-	tmpl.Execute(w, bob)
-}
-
-func contacts_page(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Contacts page")
-}
-
-func handleRequest() {
-	http.HandleFunc("/", home_page)
-	http.HandleFunc("/contacts/", contacts_page)
+func handleFunc() {
+	http.Handle("/App/", http.StripPrefix("/App/", http.FileServer(http.Dir("App"))))
+	http.HandleFunc("/", index)
+	http.HandleFunc("/create", create)
+	http.HandleFunc("/save_article", save_article)
 	http.ListenAndServe(":8080", nil)
 }
 
 func main() {
-	// var bob User = ....
-	// bob := User{Name: "Bob", Age: 25, Money: -50, Avg_grades: 4.2, Happiness: 0.8}
-
-	handleRequest()
+	handleFunc()
 }
