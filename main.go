@@ -11,13 +11,22 @@ import (
 )
 
 type Article struct {
-	Id uint16
-	Title string
-	Anons string
-	Full_text string
+	Id       uint16
+	Title    string
+	Anons    string
+	FullText string
 }
 
 var posts = []Article{} 
+
+func connectDB() (*sql.DB, error) {
+	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("Successfully connected to database")
+	return db, nil
+}
 
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Home/index.html", "pages/templates/header.html", "pages/templates/footer.html")
@@ -27,30 +36,31 @@ func index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
+	db, err := connectDB()
 	if err != nil {
 		http.Error(w, "Database connection failed", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
-	fmt.Println("Successfully connected to database")
 
 	// Выборка данных
 	res, err := db.Query("SELECT * FROM `articles`")
 	if err != nil {
-		panic(err)
+		http.Error(w, "Failed to fetch articles", http.StatusInternalServerError)
+		return
 	}
+	defer res.Close()
 
 	posts = []Article{}
 	for res.Next() {
 		var post Article
-		err := res.Scan(&post.Id, &post.Title, &post.Anons, &post.Full_text)
+		err := res.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
 		if err != nil {
-			panic(err)
+			http.Error(w, "Failed to scan article", http.StatusInternalServerError)
+			return
 		}
 
 		posts = append(posts, post)
-		// fmt.Printf("Post: %s with id: %d\n", post.Title, post.Id)
 	}
 
 	fmt.Println()
@@ -68,27 +78,30 @@ func create(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "create", nil)
 }
 
-func save_article(w http.ResponseWriter, r *http.Request) {
+/*
+* Функция: saveArticle
+* Описание: 
+*/
+func saveArticle(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	anons := r.FormValue("anons")
-	full_text := r.FormValue("full_text")
+	fullText := r.FormValue("full_text")
 
-	if title == "" || anons == "" || full_text == "" {
+	if title == "" || anons == "" || fullText == "" {
 		fmt.Fprintf(w, `<script>alert("Все поля должны быть заполнены!"); window.history.back();</script>`)
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
 	}
 
-	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
+	db, err := connectDB()
 	if err != nil {
 		http.Error(w, "Database connection failed", http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
-	fmt.Println("Successfully connected to database")
 
 	// Использование подготовленного запроса
-	_, err = db.Exec("INSERT INTO `articles` (`title`, `anons`, `full_text`) VALUES (?, ?, ?)", title, anons, full_text)
+	_, err = db.Exec("INSERT INTO `articles` (`title`, `anons`, `full_text`) VALUES (?, ?, ?)", title, anons, fullText)
 	if err != nil {
 		http.Error(w, "Failed to insert data", http.StatusInternalServerError)
 		return
@@ -98,11 +111,12 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// Функция для обработки запроса (Маршрутизация)
 func handleFunc() {
 	http.Handle("/App/", http.StripPrefix("/App/", http.FileServer(http.Dir("App"))))
 	http.HandleFunc("/", index)
 	http.HandleFunc("/create", create)
-	http.HandleFunc("/save_article", save_article)
+	http.HandleFunc("/save_article", saveArticle)
 	http.ListenAndServe(":8080", nil)
 }
 
