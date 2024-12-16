@@ -10,6 +10,15 @@ import (
 
 )
 
+type Article struct {
+	Id uint16
+	Title string
+	Anons string
+	Full_text string
+}
+
+var posts = []Article{} 
+
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Home/index.html", "pages/templates/header.html", "pages/templates/footer.html")
 
@@ -18,7 +27,34 @@ func index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t.ExecuteTemplate(w, "index", nil)
+	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+	fmt.Println("Successfully connected to database")
+
+	// Выборка данных
+	res, err := db.Query("SELECT * FROM `articles`")
+	if err != nil {
+		panic(err)
+	}
+
+	posts = []Article{}
+	for res.Next() {
+		var post Article
+		err := res.Scan(&post.Id, &post.Title, &post.Anons, &post.Full_text)
+		if err != nil {
+			panic(err)
+		}
+
+		posts = append(posts, post)
+		// fmt.Printf("Post: %s with id: %d\n", post.Title, post.Id)
+	}
+
+	fmt.Println()
+	t.ExecuteTemplate(w, "index", posts)
 }
 
 func create(w http.ResponseWriter, r *http.Request) {
