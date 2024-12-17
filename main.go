@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"html/template"
+	"strings"
 
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
@@ -80,14 +81,20 @@ func create(w http.ResponseWriter, r *http.Request) {
 
 /*
 * Функция: saveArticle
-* Описание: 
+* Описание: Сохранение статьи в базу данных
+* Параметры:
+*    @param w http.ResponseWriter - объект для записи ответа на запрос
+*    @param r *http.Request - объект запроса
+* Возвращает:
+*    @return: Нет возвращаемого значения
 */
 func saveArticle(w http.ResponseWriter, r *http.Request) {
-	title := r.FormValue("title")
-	anons := r.FormValue("anons")
-	fullText := r.FormValue("full_text")
+	title    := strings.TrimSpace(r.FormValue("title"))
+	anons 	 := strings.TrimSpace(r.FormValue("anons"))
+	fullText := strings.TrimSpace(r.FormValue("full_text"))
 
-	if title == "" || anons == "" || fullText == "" {
+	if title == "" || anons == "" || fullText == "" || 
+		isWhitespace(title) || isWhitespace(anons) || isWhitespace(fullText) {
 		fmt.Fprintf(w, `<script>alert("Все поля должны быть заполнены!"); window.history.back();</script>`)
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
@@ -98,7 +105,7 @@ func saveArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Database connection failed", http.StatusInternalServerError)
 		return
 	}
-	defer db.Close()
+	defer db.Close()	
 
 	// Использование подготовленного запроса
 	_, err = db.Exec("INSERT INTO `articles` (`title`, `anons`, `full_text`) VALUES (?, ?, ?)", title, anons, fullText)
@@ -109,6 +116,15 @@ func saveArticle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Data inserted")
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func isWhitespace(s string) bool {
+	for _, r := range s {
+		if r != ' ' {
+			return false
+		}
+	}
+	return true
 }
 
 // Функция для обработки запроса (Маршрутизация)
