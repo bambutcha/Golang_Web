@@ -11,6 +11,7 @@ import (
 
 )
 
+// Cтруктура для хранения данных статьи
 type Article struct {
 	Id       uint16
 	Title    string
@@ -20,6 +21,13 @@ type Article struct {
 
 var posts = []Article{} 
 
+/*
+* Функция: connectDB
+* Описание: Подключение к базе данных
+* Возвращает:
+*    @return: *sql.DB - объект для работы с базой данных
+*    @return: error - объект для записи ошибки
+*/
 func connectDB() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
 	if err != nil {
@@ -29,6 +37,15 @@ func connectDB() (*sql.DB, error) {
 	return db, nil
 }
 
+/*
+* Функция: index
+* Описание: Главная страница, отображение всех статей
+* Параметры:
+*    @param w http.ResponseWriter - объект для записи ответа на запрос
+*    @param r *http.Request - объект запроса
+* Возвращает:
+*    @return: Нет возвращаемого значения
+*/
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Home/index.html", "pages/templates/header.html", "pages/templates/footer.html")
 
@@ -68,6 +85,15 @@ func index(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "index", posts)
 }
 
+/*
+* Функция: create
+* Описание: Создание страницы для создания статьи
+* Параметры:
+*    @param w http.ResponseWriter - объект для записи ответа на запрос
+*    @param r *http.Request - объект запроса
+* Возвращает:
+*    @return: Нет возвращаемого значения
+*/
 func create(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Create/create.html", "pages/templates/header.html", "pages/templates/footer.html")
 
@@ -118,6 +144,14 @@ func saveArticle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+/**
+* Функция: isWhitespace
+* Описание: Проверка на пустоту строки
+* Параметры:
+*    @param s string - строка для проверки
+* Возвращает:
+*    @return: true если строка пуста, иначе false
+*/
 func isWhitespace(s string) bool {
 	for _, r := range s {
 		if r != ' ' {
@@ -127,7 +161,12 @@ func isWhitespace(s string) bool {
 	return true
 }
 
-// Функция для обработки запроса (Маршрутизация)
+/**
+* Функция: handleFunc
+* Описание: Обработка запросов (Маршрутизация)
+* Возвращает:
+*    @return: Нет возвращаемого значения
+*/
 func handleFunc() {
 	http.Handle("/App/", http.StripPrefix("/App/", http.FileServer(http.Dir("App"))))
 	http.HandleFunc("/", index)
