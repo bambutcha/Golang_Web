@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"strings"
 
+	"github.com/gorilla/mux"
+
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 
@@ -19,7 +21,8 @@ type Article struct {
 	FullText string
 }
 
-var posts = []Article{} 
+var posts = []Article{}
+var curPost = Article{}
 
 /*
 * Функция: connectDB
@@ -96,7 +99,6 @@ func index(w http.ResponseWriter, r *http.Request) {
 */
 func create(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Create/create.html", "pages/templates/header.html", "pages/templates/footer.html")
-
 	if err != nil {
 		fmt.Fprintf(w, "%s", err.Error())
 		return
@@ -144,6 +146,48 @@ func saveArticle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func showPost(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	w.WriteHeader(http.StatusOK)
+
+	t, err := template.ParseFiles("pages/Home/show.html", "pages/templates/header.html", "pages/templates/footer.html")
+	if err != nil {
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+
+	db, err := connectDB()
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	// Выборка данных
+	res, err := db.Query("SELECT * FROM `articles` WHERE `id` = ?", vars["id"])
+	if err != nil {
+		http.Error(w, "Failed to fetch articles", http.StatusInternalServerError)
+		return
+	}
+	defer res.Close()
+
+	curPost = Article{}
+	for res.Next() {
+		var post Article
+		err := res.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
+		if err != nil {
+			http.Error(w, "Failed to scan article", http.StatusInternalServerError)
+			return
+		}
+
+		curPost = post
+	}
+
+	fmt.Println()
+	t.ExecuteTemplate(w, "show", curPost)
+
+}
+
 /**
 * Функция: isWhitespace
 * Описание: Проверка на пустоту строки
@@ -168,10 +212,19 @@ func isWhitespace(s string) bool {
 *    @return: Нет возвращаемого значения
 */
 func handleFunc() {
+	rtr := mux.NewRouter()
+	rtr.HandleFunc("/", index).Methods("GET")
+	rtr.HandleFunc("/create", create).Methods("GET")
+	rtr.HandleFunc("/save_article", saveArticle).Methods("POST")
+	rtr.HandleFunc("/post/{id:[0-9]+}", showPost).Methods("GET")
+
+
+	http.Handle("/", rtr)
 	http.Handle("/App/", http.StripPrefix("/App/", http.FileServer(http.Dir("App"))))
-	http.HandleFunc("/", index)
-	http.HandleFunc("/create", create)
-	http.HandleFunc("/save_article", saveArticle)
+	// http.HandleFunc("/", index)
+	// http.HandleFunc("/create", create)
+	// http.HandleFunc("/save_article", saveArticle)
+	
 	http.ListenAndServe(":8080", nil)
 }
 
