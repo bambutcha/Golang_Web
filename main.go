@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"html/template"
+	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
 
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
 
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // Cтруктура для хранения данных статьи
@@ -30,7 +30,7 @@ var curPost = Article{}
 * Возвращает:
 *    @return: *sql.DB - объект для работы с базой данных
 *    @return: error - объект для записи ошибки
-*/
+ */
 func connectDB() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:3307)/golang")
 	if err != nil {
@@ -48,7 +48,7 @@ func connectDB() (*sql.DB, error) {
 *    @param r *http.Request - объект запроса
 * Возвращает:
 *    @return: Нет возвращаемого значения
-*/
+ */
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Home/index.html", "pages/templates/header.html", "pages/templates/footer.html")
 
@@ -96,7 +96,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 *    @param r *http.Request - объект запроса
 * Возвращает:
 *    @return: Нет возвращаемого значения
-*/
+ */
 func create(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("pages/Create/create.html", "pages/templates/header.html", "pages/templates/footer.html")
 	if err != nil {
@@ -115,13 +115,13 @@ func create(w http.ResponseWriter, r *http.Request) {
 *    @param r *http.Request - объект запроса
 * Возвращает:
 *    @return: Нет возвращаемого значения
-*/
+ */
 func saveArticle(w http.ResponseWriter, r *http.Request) {
-	title    := strings.TrimSpace(r.FormValue("title"))
-	anons 	 := strings.TrimSpace(r.FormValue("anons"))
+	title := strings.TrimSpace(r.FormValue("title"))
+	anons := strings.TrimSpace(r.FormValue("anons"))
 	fullText := strings.TrimSpace(r.FormValue("full_text"))
 
-	if title == "" || anons == "" || fullText == "" || 
+	if title == "" || anons == "" || fullText == "" ||
 		isWhitespace(title) || isWhitespace(anons) || isWhitespace(fullText) {
 		fmt.Fprintf(w, `<script>alert("Все поля должны быть заполнены!"); window.history.back();</script>`)
 		http.Error(w, "All fields are required", http.StatusBadRequest)
@@ -133,7 +133,7 @@ func saveArticle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Database connection failed", http.StatusInternalServerError)
 		return
 	}
-	defer db.Close()	
+	defer db.Close()
 
 	// Использование подготовленного запроса
 	_, err = db.Exec("INSERT INTO `articles` (`title`, `anons`, `full_text`) VALUES (?, ?, ?)", title, anons, fullText)
@@ -150,7 +150,7 @@ func showPost(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	w.WriteHeader(http.StatusOK)
 
-	t, err := template.ParseFiles("pages/Home/show.html", "pages/templates/header.html", "pages/templates/footer.html")
+	t, err := template.ParseFiles("pages/Show/show.html", "pages/templates/header.html", "pages/templates/footer.html")
 	if err != nil {
 		fmt.Fprintf(w, "%s", err.Error())
 		return
@@ -195,7 +195,7 @@ func showPost(w http.ResponseWriter, r *http.Request) {
 *    @param s string - строка для проверки
 * Возвращает:
 *    @return: true если строка пуста, иначе false
-*/
+ */
 func isWhitespace(s string) bool {
 	for _, r := range s {
 		if r != ' ' {
@@ -210,7 +210,7 @@ func isWhitespace(s string) bool {
 * Описание: Обработка запросов (Маршрутизация)
 * Возвращает:
 *    @return: Нет возвращаемого значения
-*/
+ */
 func handleFunc() {
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/", index).Methods("GET")
@@ -218,13 +218,12 @@ func handleFunc() {
 	rtr.HandleFunc("/save_article", saveArticle).Methods("POST")
 	rtr.HandleFunc("/post/{id:[0-9]+}", showPost).Methods("GET")
 
-
 	http.Handle("/", rtr)
 	http.Handle("/App/", http.StripPrefix("/App/", http.FileServer(http.Dir("App"))))
 	// http.HandleFunc("/", index)
 	// http.HandleFunc("/create", create)
 	// http.HandleFunc("/save_article", saveArticle)
-	
+
 	http.ListenAndServe(":8080", nil)
 }
 

@@ -1,0 +1,19 @@
+{{ define "show"}}
+
+{{ template "header" }}
+
+<div>
+    <h1> {{ .Title }}</h1>
+</div>
+
+<div class="input-box">
+    <h2> {{ .Anons }}</h2>
+
+    <pre class="line"></pre>
+
+    <span> {{ .FullText }}</span>
+</div>
+
+{{ template "footer" }}
+
+{{ end }}
